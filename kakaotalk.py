@@ -22,6 +22,28 @@ class chat:
         for i in res.keys():
             print("[%s] : %d" % (i, res[i]))
 
+    def count_word(self, word, name=''):
+        data = self.data
+        data = data.split('\n')
+
+        count = 0
+
+        if name == '':
+            for i in data:
+                count += i.count(word)
+
+            print("[%s] : %d" % (word, count))
+        else:
+            for i in data:
+                try:
+                    if i[0] == '[':
+                        if self.parse_user(i) == name:
+                            count += i.count(word)
+                except:
+                    pass
+            
+            print("[%s's %s] : %d" % (name, word, count))
+        
     def __init__(self, filename):
         f = open(filename, 'r', encoding='UTF8')
         self.data = f.read()
@@ -29,5 +51,6 @@ class chat:
 
 if __name__ == '__main__':
     count = chat('kakaotalk.txt')
-    count.count_chat()
-
+    count.count_word('ㅋㅋ')
+    count.count_word('ㅋㅋ', '주창')
+    
