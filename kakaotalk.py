@@ -57,11 +57,16 @@ class chat:
 
         print("[Total] : %d" % total)
 
-    def parse_last_date(self):
+    def get_last_date(self):
         data = self.data
         pivot = data.rfind("---------------")
         date = data[pivot - 17: pivot]
-        print("[%s]" % date.strip())
+        res = ''
+        res += date[:date.find("년")] + '-'
+        res += date[date.find("년")+2 : date.find("월")] + '-'
+        res += date[date.find("월")+2 : date.find("일")] + '-'
+        res += date[date.find("일")+2 : date.find("요일")]
+        return res
 
     def get_date_data(self, date):
         date = date.split('-')
@@ -88,5 +93,8 @@ class chat:
         f.close()
 
 if __name__ == '__main__':
-    count = chat('kakaotalk.txt')
-    count.count_chat(['주창', '윤석찬'])
+    chatting = chat('kakaotalk.txt')
+    
+    for i in (chatting.get_date_data(chatting.get_last_date())):
+        print(i)
+    
