@@ -31,7 +31,6 @@ class chat:
         if name == '':
             for i in data:
                 count += i.count(word)
-
             print("[%s] : %d" % (word, count))
         else:
             for i in data:
@@ -41,9 +40,15 @@ class chat:
                             count += i.count(word)
                 except:
                     pass
-            
             print("[%s's %s] : %d" % (name, word, count))
-        
+    
+    def parse_date(self):
+        data = self.data
+        length = len(data)
+        pivot = data.rfind("---------------")
+        date = data[pivot - 17: pivot]
+        print("[%s]" % date.strip())
+
     def __init__(self, filename):
         f = open(filename, 'r', encoding='UTF8')
         self.data = f.read()
@@ -51,6 +56,4 @@ class chat:
 
 if __name__ == '__main__':
     count = chat('kakaotalk.txt')
-    count.count_word('ㅋㅋ')
-    count.count_word('ㅋㅋ', '주창')
-    
+    count.parse_date()
