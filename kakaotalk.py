@@ -5,19 +5,30 @@ class chat:
         res = data[1:data.find("]")]
         return res
 
-    def count_chat(self):
+    def count_chat(self, names=[]):
         res = dict()
         data = self.data
         data = data.split('\n')
 
-        for i in data:
-            try:
-                if i[0] == '[':
-                    res[self.parse_user(i)] += 1
-            except KeyError:
-                res[self.parse_user(i)] = 1
-            except:
-                pass
+        if names == []:
+            for i in data:
+                try:
+                    if i[0] == '[':
+                        res[self.parse_user(i)] += 1
+                except KeyError:
+                    res[self.parse_user(i)] = 1
+                except:
+                    pass
+        else:
+            for i in data:
+                try:
+                    if i[0] == '[':
+                        if self.parse_user(i) in names:
+                            res[self.parse_user(i)] += 1
+                except KeyError:
+                    res[self.parse_user(i)] = 1
+                except:
+                    pass
 
         for i in res.keys():
             print("[%s] : %d" % (i, res[i]))
@@ -78,4 +89,4 @@ class chat:
 
 if __name__ == '__main__':
     count = chat('kakaotalk.txt')
-    count.count_word(['hey', 'Hey'], '주창')
+    count.count_chat(['주창', '윤석찬'])
