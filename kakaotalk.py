@@ -22,26 +22,30 @@ class chat:
         for i in res.keys():
             print("[%s] : %d" % (i, res[i]))
 
-    def count_word(self, word, name=''):
+    def count_word(self, words, name=''):
         data = self.data
         data = data.split('\n')
+        total = 0
+        for word in words:
+            count = 0
+            if name == '':
+                for i in data:
+                    count += i.count(word)
+                print("[%s] : %d" % (word, count))
 
-        count = 0
+            else:
+                for i in data:
+                    try:
+                        if i[0] == '[':
+                            if self.parse_user(i) == name:
+                                count += i.count(word)
+                    except:
+                        pass
+                print("[%s's %s] : %d" % (name, word, count))
+            total += count
 
-        if name == '':
-            for i in data:
-                count += i.count(word)
-            print("[%s] : %d" % (word, count))
-        else:
-            for i in data:
-                try:
-                    if i[0] == '[':
-                        if self.parse_user(i) == name:
-                            count += i.count(word)
-                except:
-                    pass
-            print("[%s's %s] : %d" % (name, word, count))
-    
+        print("[Total] : %d" % total)
+
     def parse_last_date(self):
         data = self.data
         pivot = data.rfind("---------------")
@@ -74,4 +78,4 @@ class chat:
 
 if __name__ == '__main__':
     count = chat('kakaotalk.txt')
-    count.get_date_data('2018-4-23-월')
+    count.count_word(['hey', 'Hey'], '주창')
