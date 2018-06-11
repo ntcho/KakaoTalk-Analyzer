@@ -42,12 +42,30 @@ class chat:
                     pass
             print("[%s's %s] : %d" % (name, word, count))
     
-    def parse_date(self):
+    def parse_last_date(self):
         data = self.data
-        length = len(data)
         pivot = data.rfind("---------------")
         date = data[pivot - 17: pivot]
         print("[%s]" % date.strip())
+
+    def get_date_data(self, date):
+        date = date.split('-')
+        date = "--------------- %s년 %s월 %s일 %s요일 ---------------" % (date[0], date[1], date[2], date[3])
+        print(date)
+        data = self.data
+        data = data[data.find(date):]
+        data = data.split('\n')
+        flag = 0
+        pData = []
+        for i in data:
+            if (flag == 0) and (date in i):
+                flag = 1
+                continue
+            elif (flag == 1) and ('---------------' in i):
+                break
+            if flag == 1:
+                pData.append(i)
+        return pData
 
     def __init__(self, filename):
         f = open(filename, 'r', encoding='UTF8')
@@ -56,4 +74,4 @@ class chat:
 
 if __name__ == '__main__':
     count = chat('kakaotalk.txt')
-    count.parse_date()
+    count.get_date_data('2018-4-23-월')
