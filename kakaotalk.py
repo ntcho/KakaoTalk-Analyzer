@@ -1,100 +1,257 @@
-#-*- coding: utf-8 -*-
+# data file encoded in UTF-8
 
-class chat:
-    def parse_user(self, data):
-        res = data[1:data.find("]")]
-        return res
+log_mode = False
 
-    def count_chat(self, names=[]):
-        res = dict()
-        data = self.data
-        data = data.split('\n')
+def log(message):
+    if log_mode:
+        print(message)
 
-        if names == []:
-            for i in data:
-                try:
-                    if i[0] == '[':
-                        res[self.parse_user(i)] += 1
-                except KeyError:
-                    res[self.parse_user(i)] = 1
-                except:
-                    pass
+# using regex module
+import re
+from datetime import datetime, date, time
+
+class Chat:
+
+    time = None # datetime object
+    name = None
+    message = None
+
+    def __init__(self, data, date):
+        matches = re.match(r'\[(.{,20})\] \[(.{,8})\] (.*)', data)
+
+        if matches is not None:
+            if date is not None:
+                self.time = datetime.combine(date, datetime.strptime(matches.group(2), "%I:%M %p").time())
+            self.name = matches.group(1)
+            self.message = matches.group(3)
+
+    def append(self, data):
+        self.message = self.message + '\n' + data
+
+    def get_words(self):
+        if self.message is not None:
+            return self.message.split(' ')
         else:
-            for i in data:
-                try:
-                    if i[0] == '[':
-                        if self.parse_user(i) in names:
-                            res[self.parse_user(i)] += 1
-                except KeyError:
-                    res[self.parse_user(i)] = 1
-                except:
-                    pass
+            return []
 
-        for i in res.keys():
-            print("[%s] : %d" % (i, res[i]))
+    def get_word_count(self):
+        return len(self.get_words())
 
-    def count_word(self, words, name=''):
-        data = self.data
-        data = data.split('\n')
-        total = 0
-        for word in words:
-            count = 0
-            if name == '':
-                for i in data:
-                    count += i.count(word)
-                print("[%s] : %d" % (word, count))
+    def get_character_count(self):
+        count = 0
 
-            else:
-                for i in data:
-                    try:
-                        if i[0] == '[':
-                            if self.parse_user(i) == name:
-                                count += i.count(word)
-                    except:
-                        pass
-                print("[%s's %s] : %d" % (name, word, count))
-            total += count
+        for word in self.get_words():
+            count += len(word)
 
-        print("[Total] : %d" % total)
+        return count
 
-    def get_last_date(self):
-        data = self.data
-        pivot = data.rfind("---------------")
-        date = data[pivot - 17: pivot]
-        res = ''
-        res += date[:date.find("년")] + '-'
-        res += date[date.find("년")+2 : date.find("월")] + '-'
-        res += date[date.find("월")+2 : date.find("일")] + '-'
-        res += date[date.find("일")+2 : date.find("요일")]
-        return res
+class Invite:
 
-    def get_date_data(self, date):
-        date = date.split('-')
-        date = "--------------- %s년 %s월 %s일 %s요일 ---------------" % (date[0], date[1], date[2], date[3])
-        print(date)
-        data = self.data
-        data = data[data.find(date):]
-        data = data.split('\n')
-        flag = 0
-        pData = []
-        for i in data:
-            if (flag == 0) and (date in i):
-                flag = 1
-                continue
-            elif (flag == 1) and ('---------------' in i):
-                break
-            if flag == 1:
-                pData.append(i)
-        return pData
+    host = None
+    guest = None
+
+    def __init__(self, data):
+        matches = re.match(r'(.*) invited (.*)\.', data)
+        host = matches.group(1)
+        guest = matches.group(2)
+
+class Leave:
+
+    name = None
+
+    def __init__(self, data):
+        matches = re.match(r'(.*) left\.', data)
+        name = matches.group(1)
+
+class Chatroom:
+
+    name = None
+    date_saved = None
+    chats = [] # chat object list
+    invites = []
+    leaves = []
+    start_date = None
+    end_date = None
 
     def __init__(self, filename):
-        f = open(filename, 'r', encoding='UTF8')
-        self.data = f.read()
+        # split date / chats
+        log("Slicing text data")
+        regex = '|'.join([
+                 '(\\[.{,20}\\] \\[.{,8}\\] .*)',               # chat
+                 '--------------- (.+) ---------------', # date
+                 '(.* invited .*\\.)',                   # invite
+                 '(.* left\\.)'                          # leave
+                 ])
+
+        date = None
+
+        f = open(filename, 'r', encoding='UTF-8')
+        
+        for line in f:
+
+            matches = re.match(regex, line)
+            
+            if matches is not None and matches.group(1) is not None:
+                self.chats.append(Chat(line, date))
+                log("Added chat with date " + str(date))
+                continue
+                
+            if matches is not None and matches.group(2) is not None:
+                date = datetime.strptime(re.match(regex, line).group(2), "%A, %B %d, %Y")
+                if self.start_date is -1:
+                    self.start_date = self.date
+                log("Added date: " + str(date))
+                continue
+
+            if matches is not None and matches.group(3) is not None:
+                self.invites.append(Invite(line))
+                log("Added invite")
+                continue
+
+            if matches is not None and matches.group(4) is not None:
+                self.leaves.append(Leave(line))
+                log("Added left")
+                continue
+
+            if len(self.chats) is 0:
+                # metadata
+                matches = re.match(r'(.*) with|Date Saved : (.*)', line)
+                
+                if matches is not None and matches.group(1) is not None:
+                    name = re.match(r'(.*) with|Date Saved : (.*)', line).group(1)
+                    log("Chatroom name: " + name)
+                    continue
+                    
+                if matches is not None and matches.group(2) is not None:
+                    self.date_saved = datetime.strptime(re.match(r'(.*) with|Date Saved : (.*)', line).group(2), "%Y-%m-%d %H:%M:%S")
+                    log("Date saved: " + str(self.date_saved))
+                    continue
+                
+            elif self.chats[-1] is Chat:
+                # multi-line message
+                self.chats[-1].append(line)
+                log("Added multi-line chat")
+
         f.close()
 
-if __name__ == '__main__':
-    chatting = chat('kakaotalk.txt')
-    
-    for i in (chatting.get_date_data(chatting.get_last_date())):
-        print(i)
-    
+        self.end_date = date
+
+    def get_chat_span(self):
+        return (self.start_date, self.end_date)
+
+    def get_chat_span_days(self):
+        return (self.end_date - self.start_date).days
+
+    def get_total_chats(self):
+        return len(self.chats)
+
+    def get_total_words(self):
+        count = 0
+        
+        for chat in self.chats:
+            count += chat.get_word_count()
+
+        return count
+
+    def get_total_characters(self):
+        count = 0
+
+        for chat in self.chats:
+            count += chat.get_character_count()
+
+        return count
+
+    def get_daily_chats(self):
+        result = []
+        count = 0
+
+        for i in range(len(self.chats)):
+            count += 1
+            try:
+                if self.chats[i].time.date != self.chats[i + 1].time.date:
+                    # day change
+                    result.append((self.chats[i].time.date, count))
+            except:
+                result.append((self.chats[i].time.date, count))
+
+        return result
+
+    def get_daily_words(self):
+        result = []
+        count = 0
+        
+        for i in range(len(self.chats)):
+            count += self.chats[i].get_word_count()
+            
+            try:
+                if self.chats[i].time.date != self.chats[i + 1].time.date:
+                    # day change
+                    result.append((self.chats[i].time.date, count))
+            except:
+                result.append((self.chats[i].time.date, count))
+
+        return result
+
+    def get_daily_characters(self):
+        result = []
+        count = 0
+        
+        for i in range(len(self.chats)):
+            count += self.chats[i].get_character_count()
+            
+            try:
+                if self.chats[i].time.date != self.chats[i + 1].time.date:
+                    # day change
+                    result.append((self.chats[i].time.date, count))
+            except:
+                result.append((self.chats[i].time.date, count))
+
+        return result
+
+    def get_hourly_chats(self):
+        result = [0] * 24
+
+        for chat in self.chats:
+            hour = chat.time.hour
+            result[hour] += 1
+
+        return result
+
+    def get_hourly_words(self):
+        result = [0] * 24
+
+        for chat in self.chats:
+            hour = chat.time.hour
+            result[hour] += chat.get_word_count()
+
+        return result
+
+    def get_hourly_characters(self):
+        result = [0] * 24
+
+        for chat in self.chats:
+            hour = chat.time.hour
+            result[hour] += chat.get_character_count()
+
+        return result
+
+    def get_weekly_chats(self):
+        result = [0] * 7
+
+        for chat in self.chats:
+            day = chat.time.weekday()
+            result[day] += 1
+
+        return result
+
+test_filename = "data.txt"
+
+chat = Chatroom(test_filename)
+print(chat.get_total_chats())
+print(chat.get_total_words())
+print(chat.get_total_characters())
+
+hourly = chat.get_hourly_words()
+
+for i in range(24):
+    print("%2d:00, %4d words" % (i, hourly[i]))

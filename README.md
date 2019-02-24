@@ -1,4 +1,4 @@
-# 간단한 카카오톡 채팅 분석
+﻿# Simple KakaoTalk chat log analysis
 
 ```
 chatting = chat(filename)
@@ -12,3 +12,4 @@ chatting.get_last_date()                    # 최종 채팅 날짜 반환
 
 chatting.get_date_data('2018-4-23-월')      # 해당 날짜의 채팅을 반환. 날짜 형식은 년-월-일-요일
 ```
+
