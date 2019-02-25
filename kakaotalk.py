@@ -15,7 +15,7 @@ class Chat:
     message = None
 
     def __init__(self, data, date):
-        matches = re.match(r'\[(.{,20})\] \[(.{,8})\] (.*)', data)
+        matches = re.match(r'\[(.{,20})\] \[(\d{,2}:\d{,2}\s\w\w)\] (.*)', data)
 
         if matches is not None:
             if date is not None:
