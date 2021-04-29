@@ -1,4 +1,4 @@
-﻿# KakaoTalk Chat Analyser
+# KakaoTalk Analyzer
 
 Get detailed stats for your chatroom.
 
