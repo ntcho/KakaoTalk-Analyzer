@@ -76,11 +76,13 @@
 
 ## Rich Contents
 
-*How many images, videos, voice messages, stickers were sent?*
+*How many images, videos, links, voice messages, stickers were sent?*
 
 ***Format***: Horizontal bar chart
 
 - Images
 - Videos
+- Links
+- YouTube video links
 - Voice messages
 - Stickers
