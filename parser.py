@@ -6,7 +6,7 @@ UTF-8 encoded.
 
   Typical usage example:
 
-  foo = analyze("data.txt")
+  foo = parse("data.txt")
   bar = foo.get_chat_count()
 """
 
@@ -299,7 +299,7 @@ match = {
 }
 
 
-def analyze(file_name: str):
+def parse(file_name: str):
     """Parses the chat log and returns a kakaotalk.Chatroom instance.
 
     Args:
