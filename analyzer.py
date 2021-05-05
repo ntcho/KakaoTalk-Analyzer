@@ -11,7 +11,10 @@ UTF-8 encoded.
 """
 
 
+from kakaotalk import Chatroom, Message, Event
+
 import re
+import datetime
 import logging as log
 
 log.basicConfig(level=log.INFO)
@@ -70,6 +73,13 @@ en_rich_content_voice_call = 'Voice Call (\d+):(\d+)'
                              # group(1): minute
                              # group(2): second
 en_rich_content_voice_call_hr = 'Voice Call (\d+):(\d+):(\d+)' # voice call > 1h
+                                # group(1): hour
+                                # group(2): minute
+                                # group(3): second
+en_rich_content_video_call = 'Video Call (\d+):(\d+)'
+                             # group(1): minute
+                             # group(2): second
+en_rich_content_video_call_hr = 'Video Call (\d+):(\d+):(\d+)' # video call > 1h
                                 # group(1): hour
                                 # group(2): minute
                                 # group(3): second
@@ -144,6 +154,13 @@ ko_rich_content_voice_call_hr = 'Voice Call (\d+):(\d+):(\d+)' # voice call > 1h
                                 # group(1): hour
                                 # group(2): minute
                                 # group(3): second
+ko_rich_content_video_call = 'Video Call (\d+):(\d+)'
+                             # group(1): minute
+                             # group(2): second
+ko_rich_content_video_call_hr = 'Video Call (\d+):(\d+):(\d+)' # video call > 1h
+                                # group(1): hour
+                                # group(2): minute
+                                # group(3): second
 ko_rich_content_live_talk = 'Live Talk ended (\d+):(\d+)'
                             # group(1): minute
                             # group(2): second
@@ -162,24 +179,64 @@ ko_event_leave = '(.{,20})님이 나갔습니다\\.'
 
 # list of rich content types that don't require regex
 # used to iterate through to check all rich content types
+# ordered high-to-low in frequency of appearance in normal chat
 rich_content_types = [
+    'stickers', 
     'photo', 
     'video', 
-    'stickers', 
-    'voice_note', 
     'deleted'
+    'voice_note', 
     ]
 
 # list of rich content types that require regex
 rich_content_regex_types = [
-    'file', 
-    'link', 
     'youtube_link', 
+    'link', 
+    'file',
+    ]
+
+# list of rich content types that require regex and also includes duration
+rich_content_regex_duraton_types = [
     'voice_call', 
+    'video_call', 
     'voice_call_hr', 
+    'video_call_hr', 
     'live_talk', 
     'live_talk_hr', 
     ]
+
+# list of date tag format to be used in datetime.strptime() by locale
+date_tag_format = {
+    'en': '%B %m, %Y',
+    'ko': '%Y년 %m월 %d일'
+}
+
+# list of locales supported
+locales = ['en', 'ko']
+
+# hours that has to be added depending on the locale
+locale_hours = {
+    'en': {
+        'A': 0, 'P': 12  # 3AM becomes 3, 3PM becomes 3 + 12 = 15
+    },
+    'ko': {
+        '전': 0, '후': 12 # 오전 3시 becomes 3, 오후 3시 becomes 3 + 12 = 15
+    }
+}
+
+# group index of time format for each locales
+locale_time_format = {
+    'en': {  # see en_message
+        'ampm': 4,
+        'hour': 2,
+        'minute': 3
+    },
+    'ko': {  # see ko_message
+        'ampm': 2,
+        'hour': 3,
+        'minute': 4
+    }
+}
 
 # used for regex matching, by locale
 match = {
@@ -198,7 +255,9 @@ match = {
             'youtube_link': en_rich_content_youtube_link,
             'stickers': en_rich_content_stickers,
             'voice_call': en_rich_content_voice_call,
-            'voice_call_hr': en_rich_content_voice_call_hr,
+            'video_call_hr': en_rich_content_video_call_hr,
+            'video_call': en_rich_content_video_call,
+            'video_call_hr': en_rich_content_video_call_hr,
             'live_talk': en_rich_content_live_talk,
             'live_talk_hr': en_rich_content_live_talk_hr,
             'voice_note': en_rich_content_voice_note,
@@ -225,6 +284,8 @@ match = {
             'stickers': ko_rich_content_stickers,
             'voice_call': ko_rich_content_voice_call,
             'voice_call_hr': ko_rich_content_voice_call_hr,
+            'video_call': ko_rich_content_video_call,
+            'video_call_hr': ko_rich_content_video_call_hr,
             'live_talk': ko_rich_content_live_talk,
             'live_talk_hr': ko_rich_content_live_talk_hr,
             'voice_note': ko_rich_content_voice_note,
@@ -252,6 +313,160 @@ def analyze(file_name: str):
         IOError: An error occurred reading the file.
         ValueError: An error occurred parsing the file.
     """
-    # Split date tags and chats
-    log.info('Splitting text data...')
-    
+
+    title = None
+    date_saved = None
+    start_date = None
+    end_date = None
+
+    chatroom = None
+
+    # Locale of the chat log
+    lc = None
+
+    # Read from file
+    with open(file_name, 'r', encoding='UTF-8') as f:
+        try:
+            # Compare first line with metadata_1
+            metadata_1 = f.readline()
+
+            # Determine chat locale
+            for l in locales:
+                match_title = re.match(match[l]['metadata'][1], metadata_1)
+                if match_title is not None:
+                    # Locale match found, set it as the current locale
+                    lc = l
+                    title = match_title.group(1)
+                    break
+            
+            if lc is None:
+                raise ValueError('locale not supported or format not recognized')
+
+            # Parse metadata_2
+            metadata_2 = f.readline()
+
+            match_date_saved = re.match(match[lc]['metadata'][2], metadata_2)
+            date_saved = datetime.strptime(
+                match_date_saved.group(1), 
+                '%Y-%m-%d %H:%M:%S')
+            
+            # Initialize Chatroom instance
+            chatroom = Chatroom(title, date_saved)
+
+            f.readline() # skip empty new line before the chat log starts
+        
+        except ValueError as err:
+            log.error(err)
+        except:
+            log.error('cannot read the metadata of the file')
+        
+        try:
+            if chatroom is None:
+                raise ValueError('kakaotalk.Chatroom is not initialized')
+            
+            # Temporary variable to hold re.match() results
+            matches = None
+
+            # Read the whole file
+            for line in f:
+
+                # 1. Message match
+                matches = re.match(match[lc]['message'], line)
+                if matches is not None and matches.group(1) is not None:
+
+                    # Calculate datetime
+                    time = None
+                    if end_date is not None:
+                        # (original hour) + (0 or 12 hour depending on the indicator)
+                        hour = int(matches.group(locale_time_format[lc]['hour']))\
+                               + locale_hours[lc][matches.group(
+                                   locale_time_format[lc]['ampm'])]
+                        minute = int(matches.group(locale_time_format[lc]['minute']))
+                        # datetime object with updated hour and minute
+                        time = end_date.replace(hour=hour, minute=minute)
+
+                    # Check whether the message contains rich content
+                    rich_content_type = None
+                    rich_content_duration = None
+                    rc_matches = None
+
+                    # Check rich contents that don't need regex (most frequent)
+                    for rc_type in rich_content_types:
+                        if matches.group(5) == match[lc]['rich_content'][rc_type]:
+                            rich_content_type = rc_type
+                            break
+
+                    if rich_content_type is None:
+                        # Check rich contents that needs regex (less frequent)
+                        for rc_type in rich_content_regex_types:
+                            rc_matches = re.match(match[lc]['rich_content'][rc_type])
+                            if rc_matches is not None and rc_matches.group(1) is not None:
+                                rich_content_type = rc_type
+                                break
+                    
+                    if rich_content_type is None:
+                        # Check rich contents that needs regex and has duration (least frequent)
+                        for rc_type in rich_content_regex_duraton_types:
+                            rc_matches = re.match(match[lc]['rich_content'][rc_type])
+                            if rc_matches is not None and rc_matches.group(1) is not None:
+                                rich_content_type = rc_type
+
+                                # Duration is shorter than 1 hour
+                                if 'hr' not in rc_type:
+                                    rich_content_duration = int(rc_matches.group(1)) * 60\
+                                                            + int(rc_matches.group(2))
+                                # Duration is longer than 1 hour
+                                else:
+                                    rich_content_duration = int(rc_matches.group(1)) * 60 * 60\
+                                                            + int(rc_matches.group(2)) * 60\
+                                                            + int(rc_matches.group(3))
+                    
+                    if rich_content_type is not None:
+                        log.info(f'Rich content found: type={rich_content_type}')
+                    if rich_content_duration is not None:
+                        log.info(f'Rich content duration found: duration={rich_content_duration}')
+
+                    # Create Message instance and add to Chatroom
+                    chatroom.add_message(Message(
+                        time,
+                        matches.group(1),  # author
+                        matches.group(5),  # content 
+                        rich_content_type,
+                        rich_content_duration
+                    ))
+                    continue
+                
+                # 2. Date tag match
+                matches = re.match(match[lc]['date_tag'], line)
+                if matches is not None and matches.group(1) is not None:
+                    date = datetime.strptime(matches.group(1), date_tag_format[lc])
+
+                    # Update start_date on first date tag
+                    if start_date is None:
+                        start_date = date
+                    
+                    # Update end_date in order to set message dates
+                    end_date = date
+                    continue
+                
+                # 3. Event match
+                is_event = False
+
+                for event_type in ['invite', 'leave']:
+                    matches = re.match(match[lc]['event'][event_type], line)
+                    if matches is not None and matches.group(1) is not None:
+                        # Create Event instance and add to Chatroom
+                        chatroom.add_event(Event(event_type, line))
+                        is_event = True
+                        log.info(f'Event found: type={event_type}')
+                        break
+                
+                # 4. Multi-line message match
+                if is_event is False and len(chatroom.messages) > 0:
+                    # Append the line to the last message instance
+                    chatroom.messages[-1].append(line)
+                        
+        except ValueError as err:
+            log.error(err)
+        except:
+            log.error('cannot parse the given chat log')
