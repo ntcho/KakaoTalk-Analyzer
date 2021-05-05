@@ -81,6 +81,30 @@ class Message:
         """
         return len(self.content) - self.content.count(' ')
 
+class Event:
+    """A class used to represent an event that can happen in a KakaoTalk chatroom.
+
+    Currently there are 2 types of events possible, participants being invited
+    and leaving.
+
+    Attributes:
+        event_type: A string of the type of the event.
+                    Will be either 'invite' or 'leave'.
+        content: A string of the content of the event.
+    """
+    event_type = None
+    content = None
+
+    def __init__(self, event_type: str, content: str) -> None:
+        """Initializes Event from event type and content.
+
+        Args:
+            event_type (str): A string of the type of the event.
+            content (str): A string of the content of the event.
+        """
+        self.event_type = event_type
+        self.content = content
+
 class Chatroom:
     """A class used to represent a KakaoTalk chatroom.
 
