@@ -80,9 +80,12 @@
 
 ***Format***: Horizontal bar chart
 
-- Images
+- Photos
 - Videos
+- Files
 - Links
 - YouTube video links
-- Voice messages
+- Voice notes
+- Voice / video calls
+- Live Talk
 - Stickers
