@@ -9,6 +9,11 @@ statistics.
   foo = Chatroom()
   bar = foo.get_message_count()
 """
+
+
+from datetime import datetime
+
+
 class Message:
     """A class used to represent a message in a chatroom.
 
@@ -20,20 +25,26 @@ class Message:
         author: A string of the name of the participant who sent the message.
         content: A string of the content of the message.
         rich_content_type: A string indicating the type of rich content message.
+        rich_content_duration: A integer representing duration in seconds for
+                               applicable rich contents such as voice call, 
+                               video call and Live Talk.
     """
     time = None
     author = None
     content = None
     rich_content_type = None
+    rich_content_duration = None
 
-    def __init__(self, time, author, content, rich_content_type) -> None:
-        """Initializes Message with time, author, content and the type of the
-           rich content.
+    def __init__(self, time: datetime, author: str, content: str, 
+                 rich_content_type: str = None, rich_content_duration = None) -> None:
+        """Initializes Message with time, author, content, type of the rich 
+           content and duration of the rich content.
         """
         self.time = time
         self.author = author
         self.content = content
         self.rich_content_type = rich_content_type
+        self.rich_content_duration = rich_content_duration
 
     def append(self, content: str) -> None:
         """Appends extra content to the message.
@@ -81,6 +92,7 @@ class Message:
         """
         return len(self.content) - self.content.count(' ')
 
+
 class Event:
     """A class used to represent an event that can happen in a KakaoTalk chatroom.
 
@@ -104,6 +116,7 @@ class Event:
         """
         self.event_type = event_type
         self.content = content
+
 
 class Chatroom:
     """A class used to represent a KakaoTalk chatroom.
@@ -167,9 +180,31 @@ class Chatroom:
     event_count_invite = 0
     event_count_leave = 0
 
-    def __init__(self, title) -> None:
+    def __init__(self, title: str, date_saved: datetime) -> None:
+        """Initializes Chatroom from title and saved date.
+
+        Args:
+            title (str): A string of the title of the chatroom.
+            date_saved (datetime): A datetime instance of the saved date metadata.
+        """
         self.title = title
+        self.date_saved = date_saved
     
-    def add_message(msg: Message) -> None:
-        return None
+    def add_message(self, msg: Message) -> None:
+        """Adds a message to the Chatroom instance.
+
+        Args:
+            msg (Message): A kakaotalk.Message instance.
+        """
+        self.messages.append(msg)
+        # TODO: add stat incrementer logic
+
+    def add_event(self, event: Event) -> None:
+        """Adds an event to the Chatroom instance.
+
+        Args:
+            event (Event): A kakaotalk.Event instance.
+        """
+        self.events.append(event)
+        # TODO: add stat incrementer logic
 
