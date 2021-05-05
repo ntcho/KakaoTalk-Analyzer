@@ -181,7 +181,7 @@ ko_event_leave = '(.{,20})님이 나갔습니다\\.'
 # used to iterate through to check all rich content types
 # ordered high-to-low in frequency of appearance in normal chat
 rich_content_types = [
-    'stickers', 
+    'sticker', 
     'photo', 
     'video', 
     'deleted'
@@ -253,7 +253,7 @@ match = {
             'file': en_rich_content_file,
             'link': en_rich_content_link,
             'youtube_link': en_rich_content_youtube_link,
-            'stickers': en_rich_content_stickers,
+            'sticker': en_rich_content_stickers,
             'voice_call': en_rich_content_voice_call,
             'video_call_hr': en_rich_content_video_call_hr,
             'video_call': en_rich_content_video_call,
@@ -281,7 +281,7 @@ match = {
             'file': ko_rich_content_file,
             'link': ko_rich_content_link,
             'youtube_link': ko_rich_content_youtube_link,
-            'stickers': ko_rich_content_stickers,
+            'sticker': ko_rich_content_stickers,
             'voice_call': ko_rich_content_voice_call,
             'voice_call_hr': ko_rich_content_voice_call_hr,
             'video_call': ko_rich_content_video_call,
@@ -444,9 +444,11 @@ def parse(file_name: str):
                     # Update start_date on first date tag
                     if start_date is None:
                         start_date = date
+                        chatroom.set_start_date(date)
                     
                     # Update end_date in order to set message dates
                     end_date = date
+                    chatroom.set_end_date(date)
                     continue
                 
                 # 3. Event match
