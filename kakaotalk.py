@@ -7,7 +7,7 @@ statistics.
   Typical usage example:
 
   foo = Chatroom()
-  bar = foo.get_message_count()
+  bar = foo.message_count
 """
 
 
@@ -153,7 +153,7 @@ class Chatroom:
 
     message_count = 0
     message_count_by_month = {}  # {'yymm': int} format
-    message_count_by_day_of_week = {}  # {int: int} format, key 0 being Sunday
+    message_count_by_day_of_week = {}  # {int: int} format, key 0 being Monday
     message_count_by_time_of_day = {}  # {int: int} format, key 0 being 12AM
     message_count_by_participant = {}  # {'name': int} format
 
@@ -161,24 +161,38 @@ class Chatroom:
     word_count = 0
     letter_count = 0
 
-    date_most_active_message = None  # (datetime, int) format
-    date_most_active_media = None  # (datetime, int) format
-    date_most_active_stickers =  None  # (datetime, int) format
+    date_most_active_message = (None, -1)  # (datetime, int) format
+    date_most_active_media = (None, -1)  # (datetime, int) format
+    date_most_active_stickers =  (None, -1)  # (datetime, int) format
 
-    rich_content_count_photo = 0
-    rich_content_count_video = 0
-    rich_content_count_file = 0
-    rich_content_count_link = 0
-    rich_content_count_youtube_link = 0
-    rich_content_count_stickers = 0
-    rich_content_count_voice_note = 0
-    rich_content_count_deleted = 0
+    date_message_count = 0
+    date_media_count = 0
+    date_sticker_count = 0
 
-    rich_content_count_voice_call = 0  # in seconds
-    rich_content_count_live_talk = 0  # in seconds
+    rich_content_count = {
+        'sticker': 0,
+        'photo': 0,
+        'video': 0,
+        'deleted': 0,
+        'voice_note': 0,
+        'youtube_link': 0,
+        'link': 0,
+        'file': 0,
+        'voice_call': 0,
+        'video_call': 0,
+        'live_talk': 0,
+    }
 
-    event_count_invite = 0
-    event_count_leave = 0
+    rich_content_duration = {
+        'voice_call': 0,  # in seconds
+        'video_call': 0,  # in seconds
+        'live_talk': 0,  # in seconds
+    }
+
+    event_count = {
+        'invite': 0,
+        'leave': 0
+    }
 
     def __init__(self, title: str, date_saved: datetime) -> None:
         """Initializes Chatroom from title and saved date.
@@ -197,7 +211,70 @@ class Chatroom:
             msg (Message): A kakaotalk.Message instance.
         """
         self.messages.append(msg)
-        # TODO: add stat incrementer logic
+
+        # Remove _hr exception
+        if msg.rich_content_type is not None and '_hr' in msg.rich_content_type:
+            # Remove '_hr' from the last message instance
+            self.messages[-1].rich_content_type = msg.rich_content_type.replace('_hr', '')
+
+        # message_count
+        self.message_count += 1
+
+        # message_count_by_month
+        month = msg.time.strftime('%Y%m')
+        if month in self.message_count_by_month:
+            self.message_count_by_month[month] += 1
+        else:
+            self.message_count_by_month[month] = 1
+
+        # message_count_by_day_of_week
+        day = msg.time.weekday()
+        if day in self.message_count_by_day_of_week:
+            self.message_count_by_day_of_week[day] += 1
+        else:
+            self.message_count_by_day_of_week[day] = 1
+        
+        # message_count_by_time_of_day
+        hour = msg.get_hour()
+        if hour in self.message_count_by_time_of_day:
+            self.message_count_by_time_of_day[hour] += 1
+        else:
+            self.message_count_by_time_of_day[hour] = 1
+
+        # message_count_by_participant
+        if msg.author in self.message_count_by_participant:
+            self.message_count_by_participant[msg.author] += 1
+        else:
+            self.message_count_by_participant[msg.author] = 1
+
+        
+        # word_count
+        self.word_count += msg.get_word_count()
+
+        # letter_count
+        self.letter_count += msg.get_letter_count()
+
+
+        # date_message_count
+        self.date_message_count += 1
+
+        # date_media_count
+        if msg.rich_content_type is 'photo' or msg.rich_content_type is 'video':
+            self.date_media_count += 1
+        
+        # date_sticker_count
+        if msg.rich_content_type is 'sticker':
+            self.date_sticker_count += 1
+
+        
+        # rich_content_count
+        if msg.rich_content_type is not None:
+            self.rich_content_count[msg.rich_content_type] += 1
+        
+        # rich_content_duration
+        if msg.rich_content_duration is not None:
+            self.rich_content_duration[msg.rich_content_type] += \
+                msg.rich_content_duration
 
     def add_event(self, event: Event) -> None:
         """Adds an event to the Chatroom instance.
@@ -206,5 +283,86 @@ class Chatroom:
             event (Event): A kakaotalk.Event instance.
         """
         self.events.append(event)
-        # TODO: add stat incrementer logic
 
+        self.event_count[event.event_type] += 1
+
+    def set_start_date(self, date: datetime) -> None:
+        """Sets start date of the chatroom.
+
+        Args:
+            date (datetime): A datetime instance of the first message.
+        """
+        self.start_date = date
+
+    def set_end_date(self, date: datetime) -> None:
+        """Sets end date of the chatroom.
+
+        Called by parser.py when it matches a date tag.
+
+        Args:
+            date (datetime): A datetime instance of the last message.
+        """
+        # Update most active day
+        if self.date_most_active_message[1] < self.date_message_count:
+            self.date_most_active_message = (self.end_date, self.date_message_count)
+        if self.date_most_active_media[1] < self.date_media_count:
+            self.date_most_active_media = (self.end_date, self.date_media_count)
+        if self.date_most_active_stickers[1] < self.date_stickers_count:
+            self.date_most_active_stickers = (self.end_date, self.date_stickers_count)
+
+        self.end_date = date
+        
+        # Reset daily counter
+        self.date_message_count = 0
+        self.date_media_count = 0
+        self.date_sticker_count = 0
+
+        # day_count
+        self.day_count += 1
+
+    def get_average_words_per_message(self) -> float:
+        return self.word_count / self.message_count
+    
+    def get_average_letters_per_message(self) -> float:
+        return self.letter_count / self.message_count
+
+    def get_average_messages_per_day(self) -> float:
+        return self.message_count / self.day_count
+    
+    def get_average_letters_per_day(self) -> float:
+        return self.letter_count / self.day_count
+    
+    def __str__(s) -> str:
+        return f""""{s.title}"
+        
+                   > Timespan
+                   from {s.start_date.strftime('%m %d, %Y')} until {s.end_date.strftime('%m %d, %Y')}
+
+                   > Timeline
+                   message stats by...
+                   \t - month = {s.message_count_by_month}
+                   \t - day of week = {s.message_count_by_day_of_week}
+                   \t - time of day = {s.message_count_by_time_of_day}
+                   \t - participant = {s.message_count_by_participant}
+
+                   > Total numbers
+                   days = {s.day_count}
+                   messages = {s.message_count}
+                   words = {s.word_count}
+                   letters = {s.letter_count}
+
+                   > Tops
+                   most messages = {s.date_most_active_message[0].strftime('%m %d, %Y')}, {s.date_most_active_message[1]}
+                   most media files = {s.date_most_active_media[0].strftime('%m %d, %Y')}, {s.date_most_active_media[1]}
+                   most stickers = {s.date_most_active_stickers[0].strftime('%m %d, %Y')}, {s.date_most_active_stickers[1]}
+
+                   > Averages
+                   Average words per message = {s.get_average_letters_per_message}
+                   Average letters per message = {s.get_average_letters_per_message}
+                   Average messages per day = {s.get_average_messages_per_day}
+                   Average letters per day = {s.get_average_letters_per_day}
+
+                   > Rich contents
+                   rich content count = {s.rich_content_count}
+                   rich content duration = {s.rich_content_duration}
+                   """
