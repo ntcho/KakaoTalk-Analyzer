@@ -17,7 +17,7 @@
 ***Format***: Horizontal bar graph (possibly with scatter)
 
 |        Name 1 |                 | Name 2        |
-|--------------:|:---------------:|---------------|
+|--------------:|:---------------:|:--------------|
 | bar \| scatter | Month (or week) | scatter \| bar |
 
 - x-axis: user
@@ -32,7 +32,7 @@
 
 ## Total Numbers
 
-*How many days of chats, messages, words and letters were sent*?
+*How many days of chats, messages, words and letters were sent?*
 
 ***Format***: Numbers
 
@@ -54,8 +54,8 @@
 ***Format***: MM DD, YYYY
 
 - Most messages
-- Most files
-- Most images
+- Most media files
+- Most stickers
 
 ## Averages
 
