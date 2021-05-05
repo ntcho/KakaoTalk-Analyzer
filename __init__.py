@@ -1,1 +1,1 @@
-__all__ = ["kakaotalk", "kakaotalk_visualizer", "kakaotalk_parser"]
+__all__ = ["kakaotalk", "kakaotalk_visualizer", "kakaotalk_parser", "main"]

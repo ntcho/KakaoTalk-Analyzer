@@ -156,6 +156,7 @@ class Chatroom:
     message_count_by_day_of_week = {}  # {int: int} format, key 0 being Monday
     message_count_by_time_of_day = {}  # {int: int} format, key 0 being 12AM
     message_count_by_participant = {}  # {'name': int} format
+    message_count_by_participant_and_month = {}  # {'yymm': {'name': int}} format
 
     day_count = 0
     word_count = 0
@@ -163,7 +164,7 @@ class Chatroom:
 
     date_most_active_message = (None, -1)  # (datetime, int) format
     date_most_active_media = (None, -1)  # (datetime, int) format
-    date_most_active_stickers =  (None, -1)  # (datetime, int) format
+    date_most_active_sticker = (None, -1)  # (datetime, int) format
 
     date_message_count = 0
     date_media_count = 0
@@ -247,6 +248,15 @@ class Chatroom:
         else:
             self.message_count_by_participant[msg.author] = 1
 
+        # message_count_by_participant_and_month
+        if month in self.message_count_by_participant_and_month:
+            if msg.author in self.message_count_by_participant_and_month[month]:
+                self.message_count_by_participant_and_month[month][msg.author] += 1
+            else:
+                self.message_count_by_participant_and_month[month][msg.author] = 1
+        else:
+            self.message_count_by_participant_and_month[month] = {msg.author: 1}
+
         
         # word_count
         self.word_count += msg.get_word_count()
@@ -307,8 +317,8 @@ class Chatroom:
             self.date_most_active_message = (self.end_date, self.date_message_count)
         if self.date_most_active_media[1] < self.date_media_count:
             self.date_most_active_media = (self.end_date, self.date_media_count)
-        if self.date_most_active_stickers[1] < self.date_stickers_count:
-            self.date_most_active_stickers = (self.end_date, self.date_stickers_count)
+        if self.date_most_active_sticker[1] < self.date_sticker_count:
+            self.date_most_active_sticker = (self.end_date, self.date_sticker_count)
 
         self.end_date = date
         
@@ -333,36 +343,38 @@ class Chatroom:
         return self.letter_count / self.day_count
     
     def __str__(s) -> str:
-        return f""""{s.title}"
-        
-                   > Timespan
-                   from {s.start_date.strftime('%m %d, %Y')} until {s.end_date.strftime('%m %d, %Y')}
+        return f"""KakaoTalk-Analyzer
+"{s.title}"
 
-                   > Timeline
-                   message stats by...
-                   \t - month = {s.message_count_by_month}
-                   \t - day of week = {s.message_count_by_day_of_week}
-                   \t - time of day = {s.message_count_by_time_of_day}
-                   \t - participant = {s.message_count_by_participant}
+> Timespan
+from {s.start_date.strftime('%b %d, %Y')} until {s.end_date.strftime('%b %d, %Y')}
 
-                   > Total numbers
-                   days = {s.day_count}
-                   messages = {s.message_count}
-                   words = {s.word_count}
-                   letters = {s.letter_count}
+> Timeline
+message stats by...
+\t - month = {s.message_count_by_month}
+\t - day of week = {s.message_count_by_day_of_week}
+\t - time of day = {s.message_count_by_time_of_day}
+\t - participant = {s.message_count_by_participant}
+\t - participant X month = {s.message_count_by_participant_and_month}
 
-                   > Tops
-                   most messages = {s.date_most_active_message[0].strftime('%m %d, %Y')}, {s.date_most_active_message[1]}
-                   most media files = {s.date_most_active_media[0].strftime('%m %d, %Y')}, {s.date_most_active_media[1]}
-                   most stickers = {s.date_most_active_stickers[0].strftime('%m %d, %Y')}, {s.date_most_active_stickers[1]}
+> Total numbers
+days = {s.day_count}
+messages = {s.message_count}
+words = {s.word_count}
+letters = {s.letter_count}
 
-                   > Averages
-                   Average words per message = {s.get_average_letters_per_message}
-                   Average letters per message = {s.get_average_letters_per_message}
-                   Average messages per day = {s.get_average_messages_per_day}
-                   Average letters per day = {s.get_average_letters_per_day}
+> Tops
+most messages = {s.date_most_active_message[0].strftime('%b %d, %Y')} | {s.date_most_active_message[1]}
+most media files = {s.date_most_active_media[0].strftime('%b %d, %Y')} | {s.date_most_active_media[1]}
+most stickers = {s.date_most_active_sticker[0].strftime('%b %d, %Y')} | {s.date_most_active_sticker[1]}
 
-                   > Rich contents
-                   rich content count = {s.rich_content_count}
-                   rich content duration = {s.rich_content_duration}
-                   """
+> Averages
+Average words per message = {s.get_average_words_per_message()}
+Average letters per message = {s.get_average_letters_per_message()}
+Average messages per day = {s.get_average_messages_per_day()}
+Average letters per day = {s.get_average_letters_per_day()}
+
+> Rich contents
+rich content count = {s.rich_content_count}
+rich content duration = {s.rich_content_duration}
+"""

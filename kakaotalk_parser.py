@@ -13,11 +13,12 @@ UTF-8 encoded.
 
 from kakaotalk import Chatroom, Message, Event
 
+import traceback
 import re
-import datetime
 import logging as log
+from datetime import datetime
 
-log.basicConfig(level=log.INFO)
+log.basicConfig(level=log.DEBUG)
 # log.basicConfig(level=log.WARNING)
 
 
@@ -48,13 +49,13 @@ Date Saved: {YYYY}-{MM}-{DD} {HH}:{MM}:{SS}                   # Metadata 2
 
 en_metadata_1 = '(.{,50}) with KakaoTalk Chats'
                 # group(1): chatroom title
-en_metadata_2 = 'Date Saved: (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})'
+en_metadata_2 = 'Date Saved : (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})'
                 # group(1): chat export timestamp
                 # - parse with strptime(match, '%Y-%m-%d %H:%M:%S')
 
 en_date_tag = '--------------- \w+, (\w+ \d{,2}, \d{4}) ---------------'
               # group(1): date tag
-              # - parse with strptime(match, '%B %m, %Y')
+              # - parse with strptime(match, '%B %d, %Y')
 en_message = '\\[(.{,20})\\] \\[(\d{,2}):(\d{2}) (\w)M\\] (.*)'
              # group(1): participant name
              # group(2): hour (12H format)
@@ -65,10 +66,10 @@ en_message = '\\[(.{,20})\\] \\[(\d{,2}):(\d{2}) (\w)M\\] (.*)'
 
 en_rich_content_photo = 'Photo'
 en_rich_content_video = 'videos'
-en_rich_content_file = 'File: .+'
-en_rich_content_link = 'http.+|www\\..+'
-en_rich_content_youtube_link = 'http.+youtu.+'
-en_rich_content_stickers = 'Emoticons'
+en_rich_content_file = 'File: (.+)'
+en_rich_content_link = '(http.+|www\\..+)'
+en_rich_content_youtube_link = '(http.+youtu.+)'
+en_rich_content_sticker = 'Emoticons'
 en_rich_content_voice_call = 'Voice Call (\d+):(\d+)'
                              # group(1): minute
                              # group(2): second
@@ -143,10 +144,10 @@ ko_message = '\\[(.{,20})\\] \\[오(\w) (\d{,2}):(\d{2})\\] (.*)'
 
 ko_rich_content_photo = '사진'
 ko_rich_content_video = '동영상'
-ko_rich_content_file = '파일: .+'
-ko_rich_content_link = 'http.+|www\\..+'
-ko_rich_content_youtube_link = 'http.+youtu.+'
-ko_rich_content_stickers = '이모티콘'
+ko_rich_content_file = '파일: (.+)'
+ko_rich_content_link = '(http.+|www\\..+)'
+ko_rich_content_youtube_link = '(http.+youtu.+)'
+ko_rich_content_sticker = '이모티콘'
 ko_rich_content_voice_call = 'Voice Call (\d+):(\d+)'
                              # group(1): minute
                              # group(2): second
@@ -184,7 +185,7 @@ rich_content_types = [
     'sticker', 
     'photo', 
     'video', 
-    'deleted'
+    'deleted',
     'voice_note', 
     ]
 
@@ -207,7 +208,7 @@ rich_content_regex_duraton_types = [
 
 # list of date tag format to be used in datetime.strptime() by locale
 date_tag_format = {
-    'en': '%B %m, %Y',
+    'en': '%B %d, %Y',
     'ko': '%Y년 %m월 %d일'
 }
 
@@ -253,9 +254,9 @@ match = {
             'file': en_rich_content_file,
             'link': en_rich_content_link,
             'youtube_link': en_rich_content_youtube_link,
-            'sticker': en_rich_content_stickers,
+            'sticker': en_rich_content_sticker,
             'voice_call': en_rich_content_voice_call,
-            'video_call_hr': en_rich_content_video_call_hr,
+            'voice_call_hr': en_rich_content_video_call_hr,
             'video_call': en_rich_content_video_call,
             'video_call_hr': en_rich_content_video_call_hr,
             'live_talk': en_rich_content_live_talk,
@@ -281,7 +282,7 @@ match = {
             'file': ko_rich_content_file,
             'link': ko_rich_content_link,
             'youtube_link': ko_rich_content_youtube_link,
-            'sticker': ko_rich_content_stickers,
+            'sticker': ko_rich_content_sticker,
             'voice_call': ko_rich_content_voice_call,
             'voice_call_hr': ko_rich_content_voice_call_hr,
             'video_call': ko_rich_content_video_call,
@@ -303,8 +304,8 @@ def parse(file_name: str):
     """Parses the chat log and returns a kakaotalk.Chatroom instance.
 
     Args:
-        file_name (str): A string of file name to parse from. Should be located
-          in the same directory as the executable.
+        file_name (str): A string of file name to parse from. Should be located\
+                         in the same directory as the executable.
 
     Returns:
         A kakaotalk.Chatroom instance with the corresponding values.
@@ -336,6 +337,7 @@ def parse(file_name: str):
                 if match_title is not None:
                     # Locale match found, set it as the current locale
                     lc = l
+                    log.info(f'locale set to {lc}')
                     title = match_title.group(1)
                     break
             
@@ -346,9 +348,11 @@ def parse(file_name: str):
             metadata_2 = f.readline()
 
             match_date_saved = re.match(match[lc]['metadata'][2], metadata_2)
-            date_saved = datetime.strptime(
-                match_date_saved.group(1), 
-                '%Y-%m-%d %H:%M:%S')
+            log.debug(f"pattern={match[lc]['metadata'][2]}, str={metadata_2}")
+            if match_date_saved is not None:
+                date_saved = datetime.strptime(
+                    match_date_saved.group(1), 
+                    '%Y-%m-%d %H:%M:%S')
             
             # Initialize Chatroom instance
             chatroom = Chatroom(title, date_saved)
@@ -359,6 +363,7 @@ def parse(file_name: str):
             log.error(err)
         except:
             log.error('cannot read the metadata of the file')
+            traceback.print_exc()
         
         try:
             if chatroom is None:
@@ -381,6 +386,8 @@ def parse(file_name: str):
                         hour = int(matches.group(locale_time_format[lc]['hour']))\
                                + locale_hours[lc][matches.group(
                                    locale_time_format[lc]['ampm'])]
+                        if hour > 23:
+                            hour -= 12  # prevent 12PM translating to 24
                         minute = int(matches.group(locale_time_format[lc]['minute']))
                         # datetime object with updated hour and minute
                         time = end_date.replace(hour=hour, minute=minute)
@@ -399,7 +406,8 @@ def parse(file_name: str):
                     if rich_content_type is None:
                         # Check rich contents that needs regex (less frequent)
                         for rc_type in rich_content_regex_types:
-                            rc_matches = re.match(match[lc]['rich_content'][rc_type])
+                            rc_matches = re.match(match[lc]['rich_content'][rc_type], matches.group(5))
+
                             if rc_matches is not None and rc_matches.group(1) is not None:
                                 rich_content_type = rc_type
                                 break
@@ -407,7 +415,7 @@ def parse(file_name: str):
                     if rich_content_type is None:
                         # Check rich contents that needs regex and has duration (least frequent)
                         for rc_type in rich_content_regex_duraton_types:
-                            rc_matches = re.match(match[lc]['rich_content'][rc_type])
+                            rc_matches = re.match(match[lc]['rich_content'][rc_type], matches.group(5))
                             if rc_matches is not None and rc_matches.group(1) is not None:
                                 rich_content_type = rc_type
 
@@ -472,3 +480,6 @@ def parse(file_name: str):
             log.error(err)
         except:
             log.error('cannot parse the given chat log')
+            traceback.print_exc()
+    
+        return chatroom
